@@ -38,7 +38,7 @@ pipeline {
             steps {
                 sshagent(['ec2-ssh-key']) {
                     // This triggers the playbook on your Ansible server
-                    sh "ssh admin@${ANSIBLE_SERVER} 'ansible-playbook -i inventory.ini deploy.yml'"
+                    sh "ssh admin@${ANSIBLE_SERVER} 'ansible-playbook -i laravel-lms/inventory.ini laravel-lms/deploy.yml'"
                 }
             }
         }
