@@ -2,7 +2,7 @@
 
 A modern **Learning Management System** built for the IT Weekend community. It provides structured courses, markdown-driven content, and a full-featured admin panel — all delivered through a fast, reactive interface.
 
-## Tech Stack
+## Tech Stack.
 
 | Layer | Technology |
 |---|---|
