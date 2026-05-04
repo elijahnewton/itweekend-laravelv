@@ -24,7 +24,7 @@ A modern **Learning Management System** built for the IT Weekend community. It p
 
 ---
 
-## Installation
+## Installation.
 
 ### Prerequisites
 
