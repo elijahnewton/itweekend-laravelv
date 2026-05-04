@@ -24,7 +24,7 @@ pipeline {
         stage('Package Artifact') {
             steps {
                 // We exclude composer.phar from the zip since production doesn't need it
-                sh "tar -czf ${APP_NAME}.tar.gz --exclude='./node_modules' --exclude='./.git' --exclude='composer.phar' ."
+                sh 'tar -czf it-weekend-lms.tar.gz --exclude=it-weekend-lms.tar.gz --exclude=./node_modules --exclude=./.git --exclude=composer.phar .'
             }
         }
         stage('Ship to Ansible') {
