@@ -23,14 +23,18 @@ pipeline {
         }
         stage('Package Artifact') {
             steps {
-                // We exclude composer.phar from the zip since production doesn't need it
-                sh 'tar -czf it-weekend-lms.tar.gz --exclude=it-weekend-lms.tar.gz --exclude=./node_modules --exclude=./.git --exclude=composer.phar .'
+                // We create the zip in /tmp/ so tar doesn't try to compress itself
+                sh 'tar -czf /tmp/${APP_NAME}.tar.gz --exclude=node_modules --exclude=.git --exclude=composer.phar .'
             }
         }
         stage('Ship to Ansible') {
             steps {
                 sshagent(['ec2-ssh-key']) {
-                    sh "scp -o StrictHostKeyChecking=no ${APP_NAME}.tar.gz admin@${ANSIBLE_SERVER}:/tmp/"
+                    // Reference the file from /tmp/
+                    sh "scp -o StrictHostKeyChecking=no /tmp/${APP_NAME}.tar.gz admin@${ANSIBLE_SERVER}:/tmp/"
+                    
+                    // Cleanup the local /tmp/ file immediately after shipping to keep your 1.55GB safe
+                    sh "rm /tmp/${APP_NAME}.tar.gz"
                 }
             }
         }
