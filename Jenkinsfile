@@ -1,50 +1,76 @@
 pipeline {
     agent any
+    
     environment {
-        ANSIBLE_SERVER = "54.198.61.7" // Your Ansible Control Node Private IP
-        APP_NAME = "it-weekend-lms"
+        // Define your Docker Registry info
+        DOCKER_REGISTRY = "musiitwa"
+        IMAGE_NAME = "it-weekend-lms"
+        DOCKER_IMAGE = "${DOCKER_REGISTRY}/${IMAGE_NAME}"
     }
+
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/elijahnewton/itweekend-laravelv.git'
+                checkout scm
             }
         }
-        stage('Build Backend') {
+
+        stage('Build & Push Image') {
             steps {
-                // Using your local composer.phar
-                sh 'php composer.phar install --no-dev --optimize-autoloader'
-            }
-        }
-        stage('Build Frontend') {
-            steps {
-                sh 'npm install && npm run build'
-            }
-        }
-        stage('Package Artifact') {
-            steps {
-                // We create the zip in /tmp/ so tar doesn't try to compress itself
-                sh 'tar -czf /tmp/${APP_NAME}.tar.gz --exclude=node_modules --exclude=.git --exclude=composer.phar .'
-            }
-        }
-        stage('Ship to Ansible') {
-            steps {
-                sshagent(['ec2-ssh-key']) {
-                    // Reference the file from /tmp/
-                    sh "scp -o StrictHostKeyChecking=no /tmp/${APP_NAME}.tar.gz admin@${ANSIBLE_SERVER}:/tmp/"
+                script {
+                    // Build the image using the Jenkins Build Number as a tag
+                    sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
                     
-                    // Cleanup the local /tmp/ file immediately after shipping to keep your 1.55GB safe
-                    sh "rm /tmp/${APP_NAME}.tar.gz"
+                    // Push to registry (Assumes you ran 'docker login' on the Jenkins node)
+                    sh "docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}"
                 }
             }
         }
+
         stage('Deploy') {
             steps {
-                sshagent(['ec2-ssh-key']) {
-                    // This triggers the playbook on your Ansible server
-                    sh "ssh admin@${ANSIBLE_SERVER} 'ansible-playbook -i laravel-lms/inventory.ini laravel-lms/deploy.yml'"
+                // Use 'withCredentials' to fetch secrets from Jenkins Vault
+                withCredentials([
+                    string(credentialsId: 'app-key', variable: 'SECRET_KEY'),
+                    string(credentialsId: 'db-pass', variable: 'DB_PWD')
+                ]) {
+                    script {
+                        // 1. Create the .env file dynamically on the target server
+                        // This handles all 40+ variables without committing them to Git
+                        sh """
+                        cat <<EOF > .env
+                        APP_NAME="IT Weekend LMS"
+                        APP_ENV=production
+                        APP_KEY=${SECRET_KEY}
+                        APP_DEBUG=false
+                        APP_URL=https://lms.file-share.page
+                        
+                        DB_CONNECTION=pgsql
+                        DB_HOST=database-1-instance-1.cif4cooyawid.us-east-1.rds.amazonaws.com
+                        DB_PORT=5432
+                        DB_DATABASE=lms
+                        DB_USERNAME=postgres
+                        DB_PASSWORD=${DB_PWD}
+                        
+                        REDIS_HOST=database-1-instance-1.cif4cooyawid.us-east-1.rds.amazonaws.com
+                        QUEUE_CONNECTION=redis
+                        # ... Add other variables from your .env.example here
+                        EOF
+                        """
+
+                        // 2. Run Docker Compose
+                        // It will use the .env we just created and the image we just pushed
+                        sh "BUILD_NUMBER=${BUILD_NUMBER} DOCKER_IMAGE=${DOCKER_IMAGE} docker compose up -d"
+                    }
                 }
             }
+        }
+    }
+    
+    post {
+        always {
+            // Clean up the .env file for security
+            sh "rm -f .env"
         }
     }
 }
