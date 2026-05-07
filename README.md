@@ -24,7 +24,30 @@ A modern **Learning Management System** built for the IT Weekend community. It p
 
 ---
 
-## Installation.
+## Repository Structure
+
+```text
+.
+├── app/                     # Core application logic (controllers, models, services, commands)
+│   ├── Console/Commands/    # Custom Artisan commands
+│   ├── Filament/Resources/  # Filament admin resources
+│   ├── Http/                # HTTP controllers, middleware, and requests
+│   └── Services/            # Domain/application services
+├── config/                  # Application and package configuration
+├── database/                # Migrations, seeders, factories, and scripts
+├── public/                  # Public web root and compiled asset entrypoints
+├── resources/               # Frontend assets (Vue, CSS) and Blade views
+│   ├── js/                  # Inertia/Vue frontend code
+│   └── views/               # Blade templates
+├── routes/                  # Web/console route definitions
+├── storage/                 # Logs, cache, and framework runtime files
+├── tests/                   # Unit, feature, and browser tests
+└── docker-compose.yml       # Local multi-service environment
+```
+
+---
+
+## Installation
 
 ### Prerequisites
 
