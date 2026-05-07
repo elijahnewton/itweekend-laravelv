@@ -10,17 +10,8 @@ services:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_URL: http://localhost:8000
-      DB_CONNECTION: pgsql
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_DATABASE: lms
-      DB_USERNAME: postgres
-      DB_PASSWORD: secret
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      QUEUE_CONNECTION: database
-      CACHE_STORE: database
-      SESSION_DRIVER: database
+      DB_HOST: {{DB_HOST}}
+      DB_PASSWORD: {{DB_PASSWORD}}
     volumes:
       - app_storage:/var/www/html/storage/app
     command: >
@@ -31,12 +22,8 @@ services:
   
     environment:
       APP_ENV: production
-      DB_CONNECTION: pgsql
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_DATABASE: lms
-      DB_USERNAME: postgres
-      DB_PASSWORD: secret
+      DB_HOST: {{DB_HOST}}
+      DB_PASSWORD: {{DB_PASSWORD}}
       QUEUE_CONNECTION: database
     command: php artisan queue:work --tries=3
 
