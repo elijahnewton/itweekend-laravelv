@@ -2,26 +2,16 @@ pipeline {
     agent any
     
     environment {
-        // Define your Docker Registry info
         DOCKER_REGISTRY = "musiitwa"
         IMAGE_NAME = "it-weekend-lms"
         DOCKER_IMAGE = "${DOCKER_REGISTRY}/${IMAGE_NAME}"
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('Build & Push Image') {
+        stage('Build & Push') {
             steps {
                 script {
-                    // Build the image using the Jenkins Build Number as a tag
                     sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
-                    
-                    // Push to registry (Assumes you ran 'docker login' on the Jenkins node)
                     sh "docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}"
                 }
             }
@@ -29,21 +19,20 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                // Use 'withCredentials' to fetch secrets from Jenkins Vault
+                // Pulling secret RDS credentials from Jenkins Credential Store
                 withCredentials([
                     string(credentialsId: 'app-key', variable: 'SECRET_KEY'),
                     string(credentialsId: 'db-pass', variable: 'DB_PWD')
                 ]) {
                     script {
-                        // 1. Create the .env file dynamically on the target server
-                        // This handles all 40+ variables without committing them to Git
+                        // Generate .env file dynamically
+                        // We set CACHE, SESSION, and QUEUE to 'database'
                         sh """
                         cat <<EOF > .env
                         APP_NAME="IT Weekend LMS"
                         APP_ENV=production
                         APP_KEY=${SECRET_KEY}
-                        APP_DEBUG=false
-                        APP_URL=https://lms.file-share.page
+                        APP_URL=https://your-lms-site.com
                         
                         DB_CONNECTION=pgsql
                         DB_HOST=database-1-instance-1.cif4cooyawid.us-east-1.rds.amazonaws.com
@@ -52,14 +41,18 @@ pipeline {
                         DB_USERNAME=postgres
                         DB_PASSWORD=${DB_PWD}
                         
-                        REDIS_HOST=database-1-instance-1.cif4cooyawid.us-east-1.rds.amazonaws.com
-                        QUEUE_CONNECTION=redis
-                        # ... Add other variables from your .env.example here
+                        # REDIS REPLACEMENT CONFIG
+                        CACHE_STORE=database
+                        SESSION_DRIVER=database
+                        QUEUE_CONNECTION=database
+                        
+                        # LOGGING
+                        LOG_CHANNEL=stack
+                        LOG_LEVEL=error
                         EOF
                         """
 
-                        // 2. Run Docker Compose
-                        // It will use the .env we just created and the image we just pushed
+                        // Deploying the new version
                         sh "BUILD_NUMBER=${BUILD_NUMBER} DOCKER_IMAGE=${DOCKER_IMAGE} docker compose up -d"
                     }
                 }
@@ -69,7 +62,7 @@ pipeline {
     
     post {
         always {
-            // Clean up the .env file for security
+            // Clean up secrets from the Jenkins workspace
             sh "rm -f .env"
         }
     }
