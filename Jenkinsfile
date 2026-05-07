@@ -28,6 +28,7 @@ pipeline {
                              -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'lms'" | grep -q 1 || \
                         psql -h database-1-instance-1.cif4cooyawid.us-east-1.rds.amazonaws.com \
                              -U postgres -d postgres -c "CREATE DATABASE lms;"
+                        psql -h $DB_HOST -U postgres -c "CREATE DATABASE lms; GRANT ALL PRIVILEGES ON DATABASE lms TO postgres;"
                         """
                     }
                 }
