@@ -17,6 +17,23 @@ pipeline {
             }
         }
 
+        stage('Provision Database') {
+            steps {
+                withCredentials([string(credentialsId: 'db-pass', variable: 'DB_PWD')]) {
+                    script {
+                        // Connect to the 'postgres' (default) database to check/create 'lms'
+                        sh """
+                        export PGPASSWORD=${DB_PWD}
+                        psql -h database-1-instance-1.cif4cooyawid.us-east-1.rds.amazonaws.com \
+                             -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'lms'" | grep -q 1 || \
+                        psql -h database-1-instance-1.cif4cooyawid.us-east-1.rds.amazonaws.com \
+                             -U postgres -d postgres -c "CREATE DATABASE lms;"
+                        """
+                    }
+                }
+            }
+        }
+
         stage('Deploy') {
             steps {
                 // Pulling secret RDS credentials from Jenkins Credential Store
