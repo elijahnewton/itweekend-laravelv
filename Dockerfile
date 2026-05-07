@@ -1,35 +1,32 @@
-FROM php:8.3-cli-alpine
+# Stage 1: Build Frontend Assets
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
+# Stage 2: Final Application Image
+FROM dunglas/frankenphp:1.2-php8.3-alpine
+
+# Install System dependencies & PHP extensions
 RUN apk add --no-cache \
-    nodejs \
-    npm \
     postgresql-dev \
-    git \
-    unzip \
     libzip-dev \
-    && docker-php-ext-install pdo pdo_pgsql zip
-
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+    && docker-php-ext-install pdo pdo_pgsql zip opcache
 
 WORKDIR /var/www/html
 
-# Copy dependency files first for better layer caching
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
-
-COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
-
-# Copy the rest of the application
+# Copy application code
 COPY . .
+# Copy compiled assets from Stage 1
+COPY --from=frontend-builder /app/public/build ./public/build
 
-# Build frontend assets
-RUN npm run build
+# Install Composer dependencies
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+RUN composer install --no-dev --optimize-autoloader
 
-# Run post-install scripts
-RUN composer run-script post-autoload-dump
+# Set permissions for Laravel
+RUN chown -R www-data:www-data storage bootstrap/cache
 
-EXPOSE 8000
-
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+USER www-data
