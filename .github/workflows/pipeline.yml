@@ -1,0 +1,53 @@
+name: Production CI/CD
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Terraform Apply
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET }}
+        run: |
+          terraform init
+          terraform apply -auto-approve -var="db_password=${{ secrets.DB_PASSWORD }}"
+
+  deploy:
+    needs: infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build & Push
+        run: |
+          docker build -t ${{ secrets.DOCKER_USER }}/lms:${{ github.sha }} .
+          echo ${{ secrets.DOCKER_PASS }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
+          docker push ${{ secrets.DOCKER_USER }}/lms:${{ github.sha }}
+
+      - name: Provision DB & Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # 1. Ensure DB exists
+            export PGPASSWORD="${{ secrets.DB_PASSWORD }}"
+            psql -h ${{ secrets.DB_HOST }} -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'lms'" | grep -q 1 || \
+            psql -h ${{ secrets.DB_HOST }} -U postgres -d postgres -c "CREATE DATABASE lms;"
+            
+            # 2. Create .env
+            cat <<EOF > .env
+            APP_KEY=${{ secrets.APP_KEY }}
+            DB_HOST=${{ secrets.DB_HOST }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            CACHE_STORE=database
+            QUEUE_CONNECTION=database
+            EOF
+
+            # 3. Deploy
+            export DOCKER_IMAGE=${{ secrets.DOCKER_USER }}/lms:${{ github.sha }}
+            docker compose pull && docker compose up -d
