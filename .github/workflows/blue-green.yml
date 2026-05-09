@@ -1,0 +1,53 @@
+name: Blue-Green Deployment
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and Push
+        run: |
+          docker build -t ${{ secrets.DOCKER_USER }}/lms:${{ github.sha }} .
+          docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASS }}
+          docker push ${{ secrets.DOCKER_USER }}/lms:${{ github.sha }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine Target Environment
+        id: target
+        run: |
+          # Logic to ask AWS: "Which Target Group is NOT active?"
+          # For this example, we assume we toggle based on a variable
+          echo "color=green" >> $GITHUB_OUTPUT 
+
+      - name: Provision Database if Missing
+        run: |
+          export PGPASSWORD="${{ secrets.DB_PASSWORD }}"
+          psql -h ${{ secrets.DB_HOST }} -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'lms'" | grep -q 1 || \
+          psql -h ${{ secrets.DB_HOST }} -U postgres -d postgres -c "CREATE DATABASE lms;"
+
+      - name: Deploy to Inactive Environment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.target.outputs.color == 'blue' ? secrets.BLUE_IP : secrets.GREEN_IP }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # Inject variables into .env and pull image
+            echo "APP_KEY=${{ secrets.APP_KEY }}" > .env
+            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+            echo "CACHE_STORE=database" >> .env # Using DB for Redis functionality
+            
+            docker compose pull
+            docker compose up -d
+
+      - name: Switch Traffic (The Cutover)
+        run: |
+          # AWS CLI command to point ALB to the new Target Group
+          aws elbv2 modify-listener --listener-arn ${{ secrets.ALB_LISTENER_ARN }} \
+            --default-actions Type=forward,TargetGroupArn=${{ secrets.GREEN_TG_ARN }}
