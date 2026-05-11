@@ -10,8 +10,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Terraform Apply
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
         run: |
           terraform init
           terraform apply -auto-approve -var="db_password=${{ secrets.DB_PASSWORD }}"
