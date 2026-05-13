@@ -30,19 +30,24 @@ WORKDIR /var/www/html
 # 1. Copy application code
 COPY . .
 
-# 2. Bring in the compiled assets from Stage 2
+# 2. Bring in compiled assets
 COPY --from=frontend-builder /app/public/build ./public/build
 
-# 3. Bring in the vendor folder from Stage 1 and finish autoloading
-COPY --from=composer-builder /usr/bin/composer /usr/bin/composer
+# 3. Bring in vendor and composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY --from=composer-builder /app/vendor ./vendor
 RUN composer dump-autoload --optimize --no-dev
 
-# Set permissions
-RUN chown -R www-data:www-data storage bootstrap/cache
+# 4. Permissions Fixes
+# Ensure the binary is executable and reset permissions
+RUN chmod +x /usr/local/bin/frankenphp && \
+    chown -R www-data:www-data storage bootstrap/cache
 
-#USER www-data
+# --- THE CRITICAL FIX FOR RENDER ---
+# We bypass the default entrypoint script to avoid the "Operation not permitted" error.
+ENTRYPOINT ["/usr/local/bin/frankenphp"]
 
 EXPOSE 8000
 
-CMD ["frankenphp", "php-server", "--listen", ":8000"]
+# Start the server directly
+CMD ["php-server", "--listen", ":8000"]
