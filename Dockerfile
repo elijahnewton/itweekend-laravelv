@@ -14,39 +14,38 @@ COPY --from=composer-builder /app/vendor ./vendor
 RUN npm run build
 
 # --- Stage 3: Production Environment (Apache) ---
-FROM php:8.3-apache-alpine
+FROM php:8.3-apache
 
-# Install Postgres and system dependencies
-RUN apk add --no-cache \
-    postgresql-dev \
+# 1. Install dependencies using apt (Debian) instead of apk (Alpine)
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
     libzip-dev \
-    icu-dev \
-    && docker-php-ext-install pdo pdo_pgsql zip opcache intl
+    unzip \
+    zip \
+    && docker-php-ext-install pdo pdo_pgsql zip opcache
 
-# Enable Apache mod_rewrite for Laravel/Slim/etc routing
-RUN a2enmod rewrite || sed -i 's/#LoadModule rewrite_module/LoadModule rewrite_module/' /etc/apache2/httpd.conf
+# 2. Enable Apache mod_rewrite for Laravel routing
+RUN a2enmod rewrite
 
-# Set Document Root to public folder
+# 3. Set Document Root to Laravel's public folder
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/httpd.conf /etc/apache2/conf.d/*.conf
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 WORKDIR /var/www/html
 
-# 1. Copy application code
+# 4. Copy application code and assets
 COPY . .
-
-# 2. Assets from Stage 2
 COPY --from=frontend-builder /app/public/build ./public/build
 
-# 3. Vendor from Stage 1
+# 5. Bring in vendor and composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY --from=composer-builder /app/vendor ./vendor
 RUN composer dump-autoload --optimize --no-dev
 
-# 4. Permissions
+# 6. Set Permissions
 RUN chown -R www-data:www-data storage bootstrap/cache
 
-# Render uses port 80 or 10000 usually, but we'll stick to 80 for Apache
 EXPOSE 80
 
 CMD ["apache2-foreground"]
