@@ -41,7 +41,7 @@ RUN composer dump-autoload --optimize --no-dev
 # Set permissions
 RUN chown -R www-data:www-data storage bootstrap/cache
 
-USER www-data
+#USER www-data
 
 EXPOSE 8000
 
