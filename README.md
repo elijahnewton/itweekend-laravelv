@@ -213,6 +213,35 @@ Click **Deploy** in the dashboard. Laravel Cloud will build the application, run
 
 ---
 
+### Option 4 — Render (Docker + Neon Postgres)
+
+Use the repository `Dockerfile` as the Render Docker build source.
+
+Set these environment variables in Render:
+
+```dotenv
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://<your-render-domain>
+APP_KEY=base64:<your-generated-key>
+APP_FORCE_HTTPS=true
+TRUSTED_PROXIES=*
+
+DB_CONNECTION=pgsql
+# Either set DB_URL/DATABASE_URL from Neon, or set DB_HOST/DB_PORT/DB_DATABASE/DB_USERNAME/DB_PASSWORD.
+DB_URL=<neon-connection-string>
+DB_SSLMODE=require
+
+LOG_CHANNEL=stderr
+```
+
+Notes:
+- The container startup script automatically uses Render's `PORT`.
+- Migrations run automatically at container startup.
+- `content:sync` runs automatically only when `storage/app/content` contains content.
+
+---
+
 ## Useful Artisan Commands
 
 | Command | Description |
