@@ -4,6 +4,7 @@ use Illuminate\Support\Str;
 use Pdo\Mysql;
 
 $databaseUrl = env('DB_URL', env('DATABASE_URL'));
+$defaultPgsqlSslMode = env('APP_ENV') === 'production' ? 'require' : 'prefer';
 
 return [
 
@@ -98,7 +99,7 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => env('DB_SSLMODE', env('APP_ENV') === 'production' ? 'require' : 'prefer'),
+            'sslmode' => env('DB_SSLMODE', $defaultPgsqlSslMode),
         ],
 
         'sqlsrv' => [
