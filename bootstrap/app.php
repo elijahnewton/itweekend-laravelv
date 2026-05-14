@@ -11,11 +11,18 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware) {
-        // Add this line to trust Render's load balancer
-        $middleware->trustProxies(at: '*'); 
-    })
     ->withMiddleware(function (Middleware $middleware): void {
+        $trustedProxies = config('app.trusted_proxies');
+
+        if ($trustedProxies === '*') {
+            $middleware->trustProxies(at: '*');
+        } elseif (is_string($trustedProxies)) {
+            $proxyList = array_values(array_filter(array_map('trim', explode(',', $trustedProxies))));
+            if ($proxyList !== []) {
+                $middleware->trustProxies(at: $proxyList);
+            }
+        }
+
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,

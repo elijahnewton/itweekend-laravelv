@@ -43,13 +43,12 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY --from=composer-builder /app/vendor ./vendor
 RUN composer dump-autoload --optimize --no-dev
 
-# 6. Set Permissions
-RUN chown -R www-data:www-data storage bootstrap/cache
-# Ensure storage and bootstrap/cache are writable
+# 6. Add startup script and permissions
+COPY docker/start.sh /usr/local/bin/start-container
+RUN chmod +x /usr/local/bin/start-container
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 EXPOSE 80
 
-#CMD php artisan migrate --force && apache2-foreground
-CMD sh -c "php artisan config:clear && php artisan migrate --force && apache2-foreground"
+CMD ["/usr/local/bin/start-container"]
