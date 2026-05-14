@@ -3,7 +3,7 @@
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
-$databaseUrl = env('DB_URL', env('DATABASE_URL'));
+$databaseUrl = env('DATABASE_URL', env('DB_URL'));
 $pgsqlSslModeDefault = env('APP_ENV') === 'production' ? 'require' : 'prefer';
 
 return [

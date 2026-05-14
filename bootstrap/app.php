@@ -16,8 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         if ($trustedProxies === '*') {
             $middleware->trustProxies(at: '*');
-        } elseif (! empty($trustedProxies)) {
-            $middleware->trustProxies(at: array_map('trim', explode(',', $trustedProxies)));
+        } elseif (is_string($trustedProxies)) {
+            $proxyList = array_values(array_filter(array_map('trim', explode(',', $trustedProxies))));
+            if ($proxyList !== []) {
+                $middleware->trustProxies(at: $proxyList);
+            }
         }
 
         $middleware->web(append: [
