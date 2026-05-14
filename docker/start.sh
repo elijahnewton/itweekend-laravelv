@@ -25,7 +25,7 @@ chmod -R ug+rwx storage bootstrap/cache
 php artisan optimize:clear --no-interaction
 php artisan migrate --force --no-interaction
 
-if [ -n "$(find storage/app/content -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+if [ -d storage/app/content ] && [ -n "$(find storage/app/content -mindepth 1 -maxdepth 1 -print -quit)" ]; then
     php artisan content:sync --no-interaction
 else
     echo "No content found in storage/app/content; skipping content:sync."
