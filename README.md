@@ -242,6 +242,65 @@ Notes:
 
 ---
 
+## Adding Course Content (for `content:sync` / seeding)
+
+Course content must be added inside:
+
+```text
+storage/app/content
+```
+
+Use this structure:
+
+```text
+storage/app/content/
+└── <course-folder>/
+    ├── course.yml
+    ├── 01-<chapter-folder>/
+    │   ├── chapter.yml
+    │   ├── 01-<lesson>.md
+    │   └── 02-<lesson>.md
+    └── 02-<chapter-folder>/
+        ├── chapter.yml
+        └── 01-<lesson>.md
+```
+
+### Required / expected metadata
+
+- `course.yml` (required for each course folder)
+  - Required keys: `slug`, `title`
+  - Optional keys: `description`, `level`, `icon`, `color`, `estimated_hours`, `order_index`, `is_published`
+- `chapter.yml` (optional per chapter folder)
+  - Optional keys: `title`, `order_index`
+- `*.md` lesson files (one or more per chapter folder)
+  - Must include YAML front matter
+  - Recommended keys: `slug`, `title`
+  - Optional keys: `order`, `estimated_minutes`, `code_example`, `code_language`, `video_url`
+
+Example lesson file shape:
+
+```md
+---
+slug: intro-to-topic
+title: Introduction to Topic
+order: 1
+estimated_minutes: 10
+---
+
+# Lesson content
+```
+
+Then run:
+
+```bash
+php artisan migrate --seed
+php artisan content:sync
+```
+
+`content:sync` reads `storage/app/content`, creates/updates courses and chapters from YAML files, and imports lesson markdown into the database.
+
+---
+
 ## Useful Artisan Commands
 
 | Command | Description |
